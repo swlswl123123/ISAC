@@ -37,13 +37,17 @@ MSK_LFM_AF = xcorr(MSK_LFM, MSK_LFM);
 CPM_LFM_AF = xcorr(CPM_LFM, CPM_LFM);
 GMSK_LFM_AF = xcorr(GMSK_LFM, GMSK_LFM);
 
-% y=CPM_LFM;
-% yfft = fft(y, 2*Tp*fs-1);
+y=CPM_LFM;
+yfft = fft(y, 2*Tp*fs-1);
 % h=zeros(1, Tp*fs);
 % for i=1:Tp*fs
 %     h(i)=conj(y(Tp*fs-i+1));
 % end
-% win = hamming(Tp*fs)';% Hamming 窗
+win = hamming(Tp*fs)';% Hamming 窗
+winfft = fft(win, 2*Tp*fs-1);
+
+CPM_LFM_AF = ifft(winfft.*yfft./yfft);
+
 % hfft = fft(h.*win, 2*Tp*fs-1);     % 匹配滤波器的频域响应
 % CPM_LFM_AF = abs(ifft(hfft.*yfft)); %脉冲压缩
 
@@ -53,18 +57,20 @@ GMSK_LFM_AF = xcorr(GMSK_LFM, GMSK_LFM);
 % CPM_LFM_Reverse = CPM_LFM_Reverse(32+1:end-32);
 % CPM_LFM_AF = xcorr(CPM_LFM_Reverse, GMSK_LFM);
 
+
+
 figure
-plot(20*log10(abs(LFM_AF)./max(abs(LFM_AF))));
-hold on;
-plot(20*log10(abs(MSK_LFM_AF)./max(abs(MSK_LFM_AF))));
-hold on;
+% plot(20*log10(abs(LFM_AF)./max(abs(LFM_AF))));
+% hold on;
+% plot(20*log10(abs(MSK_LFM_AF)./max(abs(MSK_LFM_AF))));
+% hold on;
 plot(20*log10(abs(CPM_LFM_AF)./max(abs(CPM_LFM_AF))));
-hold on;
-plot(20*log10(abs(GMSK_LFM_AF)./max(abs(GMSK_LFM_AF))));
-ylim([-80 0]);
+% hold on;
+% plot(20*log10(abs(GMSK_LFM_AF)./max(abs(GMSK_LFM_AF))));
+% ylim([-80 0]);
 legend('LFM', 'MSK', 'CPM', 'GMSK')
 
-Ne = 1000;
+Ne = 1;
 
 MSK_LFM_FFT = zeros(size(LFM));
 CPM_LFM_FFT = zeros(size(LFM));
