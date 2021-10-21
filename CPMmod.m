@@ -41,19 +41,21 @@ function [CPM_BB] = CPMmod(data, oversamp)
     phi = zeros(1, oversamp);
     for i = 1:length(data)
         if i == 1
-            bit = [0, data(i)];
-            % bit = [data(i), data(i)];
-            % L = data(i);
+            if data(1) == 1
+                phi_all = [phi_all, ((1:oversamp)-1)*pi/2/oversamp];
+            else
+                phi_all = [phi_all, -((1:oversamp)-1)*pi/2/oversamp];
+            end
         else
             bit = data(i-1:i);
+            if i > 2
+                L = L + data(i-2);
+            end
+            for j  = 1:oversamp
+                phi(j) = bit(2)*J_g(j) + bit(1)*J_g(j + oversamp);
+            end
+            phi_all = [phi_all, pi * phi + L * pi / 2 + data(1) * pi / 4];
         end
-        if i > 2
-            L = L + data(i-2);
-        end
-        for j  = 1:oversamp
-            phi(j) = bit(2)*J_g(j) + bit(1)*J_g(j + oversamp);
-        end
-        phi_all = [phi_all, pi * phi + L * pi / 2];
     end
     phi_all = mod(phi_all, 2*pi);
     % figure
