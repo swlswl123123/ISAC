@@ -1,6 +1,6 @@
 clear all;close all;
 % rng(0);
-% CPM parameter
+%% CPM parameter
 h = 0.5; % modulation number
 L = 2;   % related length
 HeadNumS1 = 128; % No. of PN head
@@ -14,23 +14,24 @@ DataValidNum = DataMainNum + DataPartNum1/2 + DataPartNum2/2;
 Tp = 20;  % LFM time width
 Ts = Tp/TotalNum;% symbol time width
 sym_rate = 1/Ts;
-% LFM parameter
+%% LFM parameter
 B = 40; % Band width MHz
 K = B/Tp;  % FM slope MHz/mus B/Tp
 fc = 100; % carry frequence MHz 
 fd = 0.001; % frequence deviation 
 phid = 0.1 * pi; % phase deviation
-Ne = 100;
+Ne = 1000;
 
 err_rec = [];
+signal_fre_rec = [];
 
-for EbN0 = 3
+for EbN0 = 0:10
 
     erro_cnt = 0; % statistic erro rate
 
     for ll = 1:Ne
 
-        up = 4;
+        up = 1;
         fs = 320*up; % sample frequence MHz 
         oversample = fs*Ts;
 
@@ -72,16 +73,18 @@ for EbN0 = 3
         t = -0.5*Tp : 1/fs: 0.5*Tp - 1/fs;
         t = t + 1/fs/2;
         CPM_LFM = CPM_BB .* exp(1i*K*pi*t.^2);
-        % figure
-        % plot((20*log10(abs(fft(CPM_LFM)))))
+        %% show frequency of K-LFM-CPM
+        % CPM_LFM_FRE = abs(fftshift(fft(CPM_LFM)));
+        % signal_fre_rec = FreSum(signal_fre_rec, 20*log10(CPM_LFM_FRE ./ max(CPM_LFM_FRE)));
 
         DelayNum = round(rand*100)*oversample;
         signal_tx = [zeros(1, DelayNum), CPM_LFM .* exp(1i*2*pi*fc*t) .* exp(1i*phid), zeros(1,10*oversample)];
-        signal_tx = signal_tx(1:up:end);
+        %% test for sample deviation
+        % signal_tx = signal_tx(1:up:end);
         oversample = oversample / up;
         fs = fs / up;
 
-        % add noise
+        %% add noise
         signal_noise = awgn(signal_tx, -10*log10(oversample) + EbN0, 'measured');
 
         % 320MHz 75 85 115 125
@@ -90,7 +93,7 @@ for EbN0 = 3
         % signal_recv = signal_recv(48+1:end-48);
         signal_recv = signal_noise;
 
-        % base signal
+        %% base signal
         tt = 0 : 1/fs : length(signal_recv) * (1/fs) - 1/fs;
         tt = tt + 1/fs/2;
         CPM_LFM_recv = signal_recv .* exp(-1i*2*pi*(fc-fd)*tt);
@@ -99,7 +102,7 @@ for EbN0 = 3
         CPM_LFM_recv = conv(CPM_LFM_recv, LP1);
         CPM_LFM_recv = CPM_LFM_recv(48+1:end-48);
 
-        % catch
+        %% catch
         t = -0.5*Tp : 1/fs: 0.5*Tp - 1/fs;
         t = t + 1/fs/2;
         wavHead = exp(1i*K*pi*t(1:HeadNumS1*oversample).^2);
@@ -113,7 +116,7 @@ for EbN0 = 3
         [~, mpos] = max(cor);
         CPM_LFM_catch = CPM_LFM_recv(mpos:mpos+TotalNum*oversample-1);
 
-        % delete LFM
+        %% delete LFM
         CPM_catch = CPM_LFM_catch .* exp(-1i*K*pi*t.^2);
         CPM_catch = CPM_catch(2:2:end);
         % 160MHz 18 22
@@ -122,7 +125,7 @@ for EbN0 = 3
         CPM_recv = CPM_recv(48+1:end-48);
 
         oversample_base = oversample / 2;
-        % Estimate frequency and phase deviation
+        %% Estimate frequency and phase deviation
         % Frequency
         S1R = CPM_recv(1:HeadNumS1*oversample_base);
         S2R = CPM_recv(end-HeadNumS1*oversample_base+1:end);
@@ -136,7 +139,7 @@ for EbN0 = 3
         PhiEst = [S2R, S1R];
         PhiEstVal = angle(mean(PhiEst));
         CPM_recv = CPM_recv .* exp(-1i*PhiEstVal);
-
+        %% Demod
         res = CPMdemod(CPM_recv(HeadNumS1*oversample_base+1:end-HeadNumS1*oversample_base), oversample_base, nn);
         res_decode = decode(res);
         resP1 = res_decode(1:DataPartNum1);
@@ -154,19 +157,16 @@ for EbN0 = 3
     end
     err_rec = [err_rec, erro_cnt / Ne / DataValidNum]
 end
+%% show cummulative frequency
+% figure
+% plot(signal_fre_rec/Ne)
 
-% ebn0 = 0:10;
-% f = figure;
-% f.PaperUnits = 'centimeters';
-% f.PaperSize = [16, 12];
-% f.Units = 'centimeters';
-% f.Position = [0, 0, 16, 12];
-% semilogy(ebn0, Co_rec, '-s', 'LineWidth', 2);
-% hold on;
-% semilogy(ebn0, D1_rec, '-s', 'LineWidth', 2);
-% hold on;
-% semilogy(ebn0, D2_rec, '-s', 'LineWidth', 2);
-% hold on;
-% grid on;
-
-% legend('相干viterbi','D1','D2')
+%% show error curve
+ebn0 = 0:10;
+f = figure;
+f.PaperUnits = 'centimeters';
+f.PaperSize = [16, 12];
+f.Units = 'centimeters';
+f.Position = [0, 0, 16, 12];
+semilogy(ebn0, err_rec, '-s', 'LineWidth', 2);
+grid on;
